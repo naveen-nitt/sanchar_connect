@@ -52,6 +52,26 @@ Production-structured MVP for QR-based customer acquisition, store analytics, an
 4. Start frontend
    - `cd frontend && npm run dev`
 
+## Quickstart Script
+
+You can bootstrap everything with one command:
+
+```bash
+./setup.sh
+```
+
+Or bootstrap and immediately run both apps:
+
+```bash
+./setup.sh --start
+```
+
+The script will:
+- create `backend/.env` and `frontend/.env.local` if missing
+- install backend and frontend dependencies
+- check if MongoDB is reachable
+- optionally start backend and frontend together
+
 ## REST API Endpoints
 - `POST /api/auth/login`
 - `GET /api/auth/me`
