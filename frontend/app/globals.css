@@ -1,0 +1,4 @@
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+body { background: #f7f9fc; }
+.card-metric { border-left: 4px solid #0d6efd; }
