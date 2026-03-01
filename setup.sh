@@ -33,26 +33,47 @@ install_deps() {
   (cd "$dir" && npm install)
 }
 
-check_mongo() {
-  if command -v mongosh >/dev/null 2>&1; then
-    if mongosh --quiet --eval "db.adminCommand('ping').ok" >/dev/null 2>&1; then
-      info "MongoDB is reachable via mongosh."
+check_mysql() {
+  if command -v mysqladmin >/dev/null 2>&1; then
+    if mysqladmin ping -h 127.0.0.1 -P 3306 --silent >/dev/null 2>&1; then
+      info "MySQL is reachable via mysqladmin."
       return
     fi
-    warn "mongosh found, but MongoDB ping failed. Ensure MongoDB is running (default: mongodb://127.0.0.1:27017)."
+    warn "mysqladmin found, but MySQL ping failed. Ensure MySQL is running (default: 127.0.0.1:3306)."
     return
   fi
 
   if command -v nc >/dev/null 2>&1; then
-    if nc -z 127.0.0.1 27017 >/dev/null 2>&1; then
-      info "MongoDB port 27017 appears open."
+    if nc -z 127.0.0.1 3306 >/dev/null 2>&1; then
+      info "MySQL port 3306 appears open."
       return
     fi
-    warn "Port 27017 is not open. Start MongoDB before using the app."
+    warn "Port 3306 is not open. Start MySQL before using the app."
     return
   fi
 
-  warn "Could not verify MongoDB (mongosh/nc unavailable). Please ensure MongoDB is running manually."
+  warn "Could not verify MySQL (mysqladmin/nc unavailable). Please ensure MySQL is running manually."
+}
+
+ensure_mysql_db() {
+  local db_name
+  db_name="$(awk -F= '/^DB_NAME=/{print $2}' "$BACKEND_DIR/.env" | tr -d '\r' || true)"
+  local db_user
+  db_user="$(awk -F= '/^DB_USER=/{print $2}' "$BACKEND_DIR/.env" | tr -d '\r' || true)"
+
+  if [[ -z "$db_name" || -z "$db_user" ]]; then
+    warn "DB_NAME/DB_USER not found in backend/.env; skipping DB creation check."
+    return
+  fi
+
+  if command -v mysql >/dev/null 2>&1; then
+    info "Ensuring MySQL database exists: $db_name"
+    if ! mysql -u"$db_user" -p -e "CREATE DATABASE IF NOT EXISTS \`$db_name\`;"; then
+      warn "Could not auto-create DB (likely password/permissions). Please create DB manually: $db_name"
+    fi
+  else
+    warn "mysql client not found; please ensure DB '$db_name' exists."
+  fi
 }
 
 start_services() {
@@ -88,8 +109,8 @@ print_next_steps() {
 Setup complete.
 
 Next steps:
-1) Review backend/.env and set secure values (especially JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD).
-2) Ensure MongoDB is running.
+1) Review backend/.env and set secure values (especially DB credentials, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD).
+2) Ensure MySQL is running and DB exists.
 3) Start apps manually:
    - cd backend && npm run dev
    - cd frontend && npm run dev
@@ -122,7 +143,8 @@ main() {
   install_deps "$BACKEND_DIR"
   install_deps "$FRONTEND_DIR"
 
-  check_mongo
+  check_mysql
+  ensure_mysql_db
 
   if [[ "$auto_start" == "true" ]]; then
     start_services

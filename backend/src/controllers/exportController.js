@@ -3,7 +3,7 @@ const { mapCustomersForExport, toCsvBuffer, toXlsxBuffer } = require('../service
 
 const exportCustomers = async (req, res) => {
   const { store_id, format = 'csv' } = req.query;
-  const customers = await Customer.find({ store_id }).sort({ modified_datetime: -1 }).lean();
+  const customers = await Customer.listByStore(store_id);
   const rows = mapCustomersForExport(customers);
 
   if (format === 'xlsx') {

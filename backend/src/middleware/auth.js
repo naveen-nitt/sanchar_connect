@@ -9,9 +9,9 @@ const protect = async (req, res, next) => {
 
   try {
     const payload = jwt.verify(token, env.jwtSecret);
-    const user = await Store.findById(payload.id).select('-password');
+    const user = await Store.findById(payload.id);
     if (!user) return res.status(401).json({ message: 'Invalid token user' });
-    req.user = user;
+    req.user = Store.sanitizeStore(user);
     return next();
   } catch (error) {
     return res.status(401).json({ message: 'Token invalid' });

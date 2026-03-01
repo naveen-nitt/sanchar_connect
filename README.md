@@ -4,7 +4,7 @@ Production-structured MVP for QR-based customer acquisition, store analytics, an
 
 ## Stack
 - Frontend: Next.js App Router + Bootstrap + Axios + Recharts
-- Backend: Node.js + Express + MongoDB (Mongoose) + JWT + Role-based access
+- Backend: Node.js + Express + MySQL (mysql2) + JWT + Role-based access
 - Integrations: WhatsApp Business Cloud API + CSV/Excel export
 
 ## Key Business Features
@@ -47,9 +47,11 @@ Production-structured MVP for QR-based customer acquisition, store analytics, an
 2. Configure env files
    - `cp backend/.env.example backend/.env`
    - `cp frontend/.env.example frontend/.env.local`
-3. Start backend
+3. Create MySQL database
+   - `mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS sanchar_connect;"`
+4. Start backend
    - `cd backend && npm run dev`
-4. Start frontend
+5. Start frontend
    - `cd frontend && npm run dev`
 
 ## Quickstart Script
@@ -69,7 +71,7 @@ Or bootstrap and immediately run both apps:
 The script will:
 - create `backend/.env` and `frontend/.env.local` if missing
 - install backend and frontend dependencies
-- check if MongoDB is reachable
+- check if MySQL is reachable
 - optionally start backend and frontend together
 
 ## REST API Endpoints
@@ -88,7 +90,6 @@ The script will:
 
 ## Security
 - Helmet + CORS
-- Mongo sanitize
 - Rate limiting on customer submissions
 - JWT auth + role-based authorization
 - Store-level data isolation middleware

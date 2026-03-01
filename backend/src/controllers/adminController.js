@@ -5,17 +5,14 @@ const { generateStoreQr } = require('../services/qrService');
 
 const createStore = async (req, res) => {
   const store_id = generateStoreId();
-  const newStore = await Store.create({ ...req.body, store_id, role: 'owner' });
-  newStore.qr_code_url = await generateStoreQr(store_id);
-  await newStore.save();
-  return res.status(201).json({ store: newStore });
+  const created = await Store.create({ ...req.body, store_id, role: 'owner' });
+  const qr_code_url = await generateStoreQr(store_id);
+  const store = await Store.updateQr(created.id, qr_code_url);
+  return res.status(201).json({ store: Store.sanitizeStore(store) });
 };
 
 const platformStats = async (req, res) => {
-  const [totalStores, totalCustomers] = await Promise.all([
-    Store.countDocuments({ role: 'owner' }),
-    Customer.countDocuments({})
-  ]);
+  const [totalStores, totalCustomers] = await Promise.all([Store.countOwners(), Customer.countAll()]);
   res.json({ totalStores, totalCustomers });
 };
 

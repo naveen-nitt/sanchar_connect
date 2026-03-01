@@ -5,7 +5,7 @@ const bootstrapAdmin = async () => {
   const password = process.env.ADMIN_PASSWORD;
   if (!email || !password) return;
 
-  const existing = await Store.findOne({ email });
+  const existing = await Store.findByEmail(email);
   if (existing) return;
 
   await Store.create({
@@ -16,7 +16,6 @@ const bootstrapAdmin = async () => {
     password,
     role: 'admin'
   });
-  // eslint-disable-next-line no-console
   console.log('Default admin bootstrapped');
 };
 

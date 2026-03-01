@@ -23,7 +23,7 @@ export default function StoreDashboard({ params }) {
   useEffect(() => { load(); }, []);
 
   const sendBulk = async () => {
-    const selectedIds = customers.slice(0, 20).map((c) => c._id);
+    const selectedIds = customers.slice(0, 20).map((c) => c.id);
     await api.post('/messages/bulk', { customerIds: selectedIds, message, variables: { discount: '20%', expiry_date: '31 Dec' } });
     alert('Bulk send requested for sample customers.');
   };
@@ -99,7 +99,7 @@ export default function StoreDashboard({ params }) {
             <thead><tr><th>Name</th><th>Mobile</th><th>Age</th><th>DOB</th><th>Visits</th><th>Last Visit</th></tr></thead>
             <tbody>
               {customers.slice(0, 50).map((c) => (
-                <tr key={c._id}><td>{c.name}</td><td>{c.mobile_number}</td><td>{c.age}</td><td>{new Date(c.date_of_birth).toLocaleDateString()}</td><td>{c.visit_count}</td><td>{new Date(c.modified_datetime).toLocaleString()}</td></tr>
+                <tr key={c.id}><td>{c.name}</td><td>{c.mobile_number}</td><td>{c.age}</td><td>{new Date(c.date_of_birth).toLocaleDateString()}</td><td>{c.visit_count}</td><td>{new Date(c.modified_datetime).toLocaleString()}</td></tr>
               ))}
             </tbody>
           </table>

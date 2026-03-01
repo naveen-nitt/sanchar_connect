@@ -1,14 +1,19 @@
-const mongoose = require('mongoose');
+const { getPool } = require('../config/db');
 
-const messageTemplateSchema = new mongoose.Schema(
-  {
-    store_id: { type: String, required: true, index: true },
-    name: { type: String, required: true },
-    content: { type: String, required: true },
-    is_draft: { type: Boolean, default: true },
-    variables: { type: [String], default: [] }
-  },
-  { timestamps: true }
-);
+const create = async (payload) => {
+  const db = getPool();
+  const [result] = await db.query(
+    'INSERT INTO message_templates (store_id, name, content, is_draft, variables) VALUES (?, ?, ?, ?, ?)',
+    [payload.store_id, payload.name, payload.content, payload.is_draft ?? true, JSON.stringify(payload.variables || [])]
+  );
+  const [rows] = await db.query('SELECT * FROM message_templates WHERE id = ?', [result.insertId]);
+  return rows[0];
+};
 
-module.exports = mongoose.model('MessageTemplate', messageTemplateSchema);
+const listByStore = async (storeId) => {
+  const db = getPool();
+  const [rows] = await db.query('SELECT * FROM message_templates WHERE store_id=? ORDER BY updated_at DESC', [storeId]);
+  return rows;
+};
+
+module.exports = { create, listByStore };

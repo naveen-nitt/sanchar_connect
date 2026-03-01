@@ -6,19 +6,21 @@ const { sendWhatsAppText, interpolate } = require('../services/whatsappService')
 
 const saveTemplate = async (req, res) => {
   const payload = { ...req.body, store_id: req.user.store_id };
-  const tpl = await MessageTemplate.create(payload);
-  res.status(201).json({ template: tpl });
+  const template = await MessageTemplate.create(payload);
+  res.status(201).json({ template });
 };
 
 const listTemplates = async (req, res) => {
-  const templates = await MessageTemplate.find({ store_id: req.user.store_id }).sort({ updatedAt: -1 });
+  const templates = await MessageTemplate.listByStore(req.user.store_id);
   res.json({ templates });
 };
 
 const sendBulk = async (req, res) => {
   const { customerIds = [], message, variables = {} } = req.body;
-  const store = await Store.findOne({ store_id: req.user.store_id });
-  const customers = await Customer.find({ _id: { $in: customerIds }, store_id: req.user.store_id });
+  const store = await Store.findByStoreId(req.user.store_id);
+  const allCustomers = await Customer.listByStore(req.user.store_id);
+  const wanted = new Set(customerIds.map((x) => Number(x)));
+  const customers = allCustomers.filter((c) => wanted.has(Number(c.id)));
 
   const results = [];
   for (const customer of customers) {
@@ -32,7 +34,7 @@ const sendBulk = async (req, res) => {
       });
       await MessageLog.create({
         store_id: req.user.store_id,
-        customer_id: customer._id,
+        customer_id: customer.id,
         mobile_number: customer.mobile_number,
         message: rendered,
         status: 'sent',
@@ -42,7 +44,7 @@ const sendBulk = async (req, res) => {
     } catch (error) {
       await MessageLog.create({
         store_id: req.user.store_id,
-        customer_id: customer._id,
+        customer_id: customer.id,
         mobile_number: customer.mobile_number,
         message: rendered,
         status: 'failed',

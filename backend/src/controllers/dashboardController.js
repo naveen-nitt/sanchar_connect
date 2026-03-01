@@ -7,48 +7,48 @@ const dashboardStats = async (req, res) => {
   const monthAgo = new Date();
   monthAgo.setMonth(monthAgo.getMonth() - 1);
 
-  const [totalCustomers, totalVisitsRow, weeklyVisits, monthlyVisits, upcoming7, upcomingMonth] =
-    await Promise.all([
-      Customer.countDocuments({ store_id: storeId }),
-      Customer.aggregate([{ $match: { store_id: storeId } }, { $group: { _id: null, total: { $sum: '$visit_count' } } }]),
-      Customer.countDocuments({ store_id: storeId, modified_datetime: { $gte: weekAgo } }),
-      Customer.countDocuments({ store_id: storeId, modified_datetime: { $gte: monthAgo } }),
-      Customer.find({ store_id: storeId }).lean(),
-      Customer.find({ store_id: storeId }).lean()
-    ]);
+  const [totalCustomers, totalVisits, weeklyVisits, monthlyVisits, allCustomers] = await Promise.all([
+    Customer.countByStore(storeId),
+    Customer.sumVisitsByStore(storeId),
+    Customer.countSince(storeId, weekAgo),
+    Customer.countSince(storeId, monthAgo),
+    Customer.listByStore(storeId)
+  ]);
 
-  const inNext7 = upcoming7.filter((c) => {
+  const inNext7 = allCustomers.filter((c) => {
     const dob = new Date(c.date_of_birth);
     const thisYearDob = new Date(now.getFullYear(), dob.getMonth(), dob.getDate());
     const diffDays = (thisYearDob - now) / (1000 * 60 * 60 * 24);
     return diffDays >= 0 && diffDays <= 7;
   }).length;
 
-  const inThisMonth = upcomingMonth.filter((c) => new Date(c.date_of_birth).getMonth() === now.getMonth()).length;
+  const inThisMonth = allCustomers.filter((c) => new Date(c.date_of_birth).getMonth() === now.getMonth()).length;
 
-  const visitsOverTime = await Customer.aggregate([
-    { $match: { store_id: storeId } },
-    { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$modified_datetime' } }, visits: { $sum: 1 } } },
-    { $sort: { _id: 1 } },
-    { $project: { date: '$_id', visits: 1, _id: 0 } }
-  ]);
+  const visitsMap = {};
+  const ageBuckets = { '18-21': 0, '21-24': 0, '25-30': 0, other: 0 };
+  const birthdayMonthMap = {};
 
-  const ageDistribution = await Customer.aggregate([
-    { $match: { store_id: storeId, age: { $ne: null } } },
-    { $bucket: { groupBy: '$age', boundaries: [0, 18, 21, 24, 30, 40, 60, 120], default: 'Other', output: { count: { $sum: 1 } } } }
-  ]);
+  allCustomers.forEach((c) => {
+    const d = new Date(c.modified_datetime).toISOString().slice(0, 10);
+    visitsMap[d] = (visitsMap[d] || 0) + 1;
+    const m = new Date(c.date_of_birth).getMonth() + 1;
+    birthdayMonthMap[m] = (birthdayMonthMap[m] || 0) + 1;
 
-  const birthdayMonths = await Customer.aggregate([
-    { $match: { store_id: storeId } },
-    { $group: { _id: { $month: '$date_of_birth' }, count: { $sum: 1 } } },
-    { $sort: { _id: 1 } }
-  ]);
+    if (c.age >= 18 && c.age <= 21) ageBuckets['18-21'] += 1;
+    else if (c.age > 21 && c.age <= 24) ageBuckets['21-24'] += 1;
+    else if (c.age >= 25 && c.age <= 30) ageBuckets['25-30'] += 1;
+    else ageBuckets.other += 1;
+  });
+
+  const visitsOverTime = Object.keys(visitsMap).sort().map((date) => ({ date, visits: visitsMap[date] }));
+  const ageDistribution = Object.entries(ageBuckets).map(([key, count]) => ({ _id: key, count }));
+  const birthdayMonths = Object.keys(birthdayMonthMap).sort((a, b) => Number(a) - Number(b)).map((k) => ({ _id: Number(k), count: birthdayMonthMap[k] }));
 
   res.json({
     metrics: {
       totalCustomers,
       uniqueCustomers: totalCustomers,
-      totalVisits: totalVisitsRow[0]?.total || 0,
+      totalVisits,
       weeklyVisits,
       monthlyVisits,
       upcomingBirthdays7Days: inNext7,

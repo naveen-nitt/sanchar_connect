@@ -14,16 +14,10 @@ const registerCustomer = async (req, res) => {
   }
 
   const age = calcAge(date_of_birth);
-  let customer = await Customer.findOne({ store_id, mobile_number: sanitizedMobile });
+  let customer = await Customer.findByStoreAndMobile(store_id, sanitizedMobile);
 
   if (customer) {
-    customer.name = name;
-    customer.date_of_birth = date_of_birth;
-    customer.age = age;
-    customer.modified_datetime = new Date();
-    customer.visit_count += 1;
-    customer.source = source;
-    await customer.save();
+    customer = await Customer.updateVisit(customer.id, { name, date_of_birth, age, source });
     return res.json({ message: 'Customer visit updated', customer });
   }
 
@@ -42,30 +36,8 @@ const registerCustomer = async (req, res) => {
 };
 
 const listCustomers = async (req, res) => {
-  const {
-    store_id,
-    minAge,
-    maxAge,
-    birthdayMonth,
-    minVisits,
-    lastVisitFrom,
-    tags,
-    search
-  } = req.query;
-  const query = { store_id };
-
-  if (minAge || maxAge) {
-    query.age = {};
-    if (minAge) query.age.$gte = Number(minAge);
-    if (maxAge) query.age.$lte = Number(maxAge);
-  }
-  if (birthdayMonth) query.$expr = { $eq: [{ $month: '$date_of_birth' }, Number(birthdayMonth)] };
-  if (minVisits) query.visit_count = { $gte: Number(minVisits) };
-  if (lastVisitFrom) query.modified_datetime = { $gte: new Date(lastVisitFrom) };
-  if (tags) query.tags = { $in: tags.split(',') };
-  if (search) query.$or = [{ name: { $regex: search, $options: 'i' } }, { mobile_number: { $regex: search } }];
-
-  const customers = await Customer.find(query).sort({ modified_datetime: -1 }).limit(5000);
+  const { store_id, ...filters } = req.query;
+  const customers = await Customer.listFiltered(store_id, filters);
   res.json({ customers });
 };
 

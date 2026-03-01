@@ -1,15 +1,11 @@
-const mongoose = require('mongoose');
+const { getPool } = require('../config/db');
 
-const messageLogSchema = new mongoose.Schema(
-  {
-    store_id: { type: String, required: true, index: true },
-    customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
-    mobile_number: { type: String, required: true },
-    message: { type: String, required: true },
-    status: { type: String, enum: ['sent', 'failed', 'delivered'], default: 'sent' },
-    provider_response: { type: mongoose.Schema.Types.Mixed }
-  },
-  { timestamps: true }
-);
+const create = async (payload) => {
+  const db = getPool();
+  await db.query(
+    'INSERT INTO message_logs (store_id, customer_id, mobile_number, message, status, provider_response) VALUES (?, ?, ?, ?, ?, ?)',
+    [payload.store_id, payload.customer_id || null, payload.mobile_number, payload.message, payload.status || 'sent', JSON.stringify(payload.provider_response || {})]
+  );
+};
 
-module.exports = mongoose.model('MessageLog', messageLogSchema);
+module.exports = { create };
